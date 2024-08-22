@@ -1,3 +1,5 @@
+require("FontDennis8").add(Graphics); // Use the Dennis8 font for the heart emoji
+
 var week = 1; // Stock plan: programme week
 var day = 1; // Stock plan: programe day
 var run = 1; // Custom plan: running time
@@ -18,6 +20,8 @@ var pauseOrResumeWatch; // Watch for button presses to pause/resume countdown
 var defaultFontSize = (process.env.HWVERSION == 2) ? 7 : 9; // Default font size, Banglejs 2 has smaller
 var activityBgColour; // Background colour of current activity
 var currentActivity; // To store the current activity
+
+var currentBpm = "???"; // To store the current BPM as reported by the sensor
 
 function outOfTime() {
   buzz();
@@ -48,7 +52,7 @@ function buzz() {
 function drawText(text, size){
   g.clear();
   g.setFontAlign(0, 0); // center font
-  g.setFont("6x8", size);
+  g.setFont("Dennis8", size);
   g.drawString(text, g.getWidth() / 2, g.getHeight() / 2);
 }
 
@@ -62,7 +66,16 @@ function countDown() {
       size -= 2; // Use smaller font size to fit everything nicely on the screen
     }
     text += (currentMode === "run") ? "Run\n" + counter : "Walk\n" + counter; // Switches output text
-    if (time) text += "\n" + time;
+    if (time) {
+      text += "\n" + time;
+    }
+    else {
+      // \x80 is the big heart emoji
+      // \x81 is the small heart emoji
+      var icon = (counter % 2 == 0) ? "\x80" : "\x81";
+      text += "\n" + icon + currentBpm;
+    }
+
     drawText(text, size); // draw the current mode and seconds
     Bangle.setLCDPower(1); // keep the watch LCD lit up
 
@@ -164,6 +177,11 @@ function pauseOrResumeActivity() {
   }
 }
 
+// Update BPM if it's reported with high-enough confidence
+function onHrm(hrm) {
+  if (hrm.confidence >= 80) currentBpm = hrm.bpm;
+}
+
 const PLAN = [
   [
     {"run": 1, "walk": 1.5, "repetition": 8},
@@ -228,7 +246,7 @@ var mainmenu = {
     currentActivity = PLAN[week - 1][day -1];
     startActivity();
   },
-  "Exit": function() { load(); },
+  "Exit": function() { Bangle.setHRMPower(false, "c25k"); load(); },
 };
 
 // Plan view
@@ -288,3 +306,6 @@ var custommenu = {
 populatePlan();
 // Actually display the menu
 E.showMenu(mainmenu);
+
+Bangle.setHRMPower(true, "c25k"); // Turn on the heart rate monitor
+Bangle.on('HRM',onHrm); // Call the onHrm function on HRM events
