@@ -3,3 +3,4 @@
 0.03: Add option to pause/resume workout (Bangle.js 1 only)
 0.04: Add possibility of creating a custom exercise
 0.05: Add support for the hear rate monitor
+0.06: Add option to end workout prematurely (Bangle.js 1 only)

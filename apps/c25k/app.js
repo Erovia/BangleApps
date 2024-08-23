@@ -20,24 +20,31 @@ var pauseOrResumeWatch; // Watch for button presses to pause/resume countdown
 var defaultFontSize = (process.env.HWVERSION == 2) ? 7 : 9; // Default font size, Banglejs 2 has smaller
 var activityBgColour; // Background colour of current activity
 var currentActivity; // To store the current activity
+var endActivityWatch; // Watch for button presses to end current activity
 
 var currentBpm = "???"; // To store the current BPM as reported by the sensor
 
-function outOfTime() {
-  buzz();
-
-  // Once we're done
-  if (loop == 0) {
+// Clean up after an activity is done
+function cleanUp() {
     clearWatch(extraInfoWatch); // Don't watch for button presses anymore
     if (pauseOrResumeWatch) clearWatch(pauseOrResumeWatch); // Don't watch for button presses anymore
+    if (endActivityWatch) clearWatch(endActivityWatch); // Don't watch for button presses anymore
     g.setBgColor("#75C0E0"); // Blue background for the "Done" text
     drawText("Done", defaultFontSize); // Write "Done" to screen
     g.reset();
     setTimeout(E.showMenu, 5000, mainmenu); // Show the main menu again after 5secs
     clearInterval(mainInterval); // Stop the main interval from starting a new activity
     mainInterval = undefined;
+    clearInterval(activityInterval); // Clean up the activity interval
+    activityInterval = undefined;
     currentMode = undefined;
-  }
+}
+
+// Timer reaches 0
+function outOfTime() {
+  buzz();
+  // Once we're done
+  if (loop == 0) cleanUp();
 }
 
 // Buzz 3 times on state transitions
@@ -156,10 +163,12 @@ function getFunc(i, j) {
 function startActivity() {
   loop = ("walk" in currentActivity) ? currentActivity.repetition * 2 : 1;
   rep = 0;
-
+  paused = false;
+  
   E.showMenu(); // Hide the main menu
   extraInfoWatch = setWatch(showTime, (process.env.HWVERSION == 2) ? BTN1 : BTN2, {repeat: true}); // Show the clock on button press
   if (process.env.HWVERSION == 1) pauseOrResumeWatch = setWatch(pauseOrResumeActivity, BTN1, {repeat: true}); // Pause or resume on button press (Bangle.js 1 only)
+  if (process.env.HWVERSION == 1) endActivityWatch = setWatch(endActivity, BTN3, {repeat: true}); // End on button press (Bangle.js 1 only)
   buzz();
   mainInterval = setInterval(function() {startTimer();}, 1000); // Check every second if we need to do something
 }
@@ -175,6 +184,11 @@ function pauseOrResumeActivity() {
   else {
     g.setBgColor(activityBgColour);
   }
+}
+
+// End current activity
+function endActivity(){
+  if (paused) cleanUp();
 }
 
 // Update BPM if it's reported with high-enough confidence
